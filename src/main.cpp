@@ -24,17 +24,19 @@ int main(int argc, const char *argv[])
 	{
 		run_range_demo();
 	}
-	catch(const std::exception& e)
+	catch (const std::exception &e)
 	{
 		std::cerr << "exception : " << e.what() << '\n';
 	}
-	
 }
 
 void run_range_demo()
 {
-	vector<int> data{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-	auto result = data |
+	vector<int> data = {1, 2, 3, 4, 5, 10, 9, 8, 7, 6};
+	
+	sort(begin(data), end(data), [](int a, int b) { return a < b; }) ;
+
+	auto result = data |				  
 				  views::filter([](int i) { return i % 2 == 1; }) |
 				  views::transform([](int i) { return to_string(i); });
 
