@@ -13,6 +13,7 @@
 #include <vector>
 #include <algorithm>
 #include <ranges>
+//#include <format>
 
 using namespace std;
 
@@ -34,9 +35,9 @@ void run_range_demo()
 {
 	vector<int> data = {1, 2, 3, 4, 5, 10, 9, 8, 7, 6};
 	
-	sort(begin(data), end(data), [](int a, int b) { return a < b; }) ;
+	ranges::sort(data);
 
-	auto result = data |				  
+	auto result = data |
 				  views::filter([](int i) { return i % 2 == 1; }) |
 				  views::transform([](int i) { return to_string(i); });
 
@@ -45,3 +46,8 @@ void run_range_demo()
 
 	cout << endl;
 }
+
+// void run_formating_demo()
+// {
+// 	cout << format("Hello {}!\n", "world");
+// }
