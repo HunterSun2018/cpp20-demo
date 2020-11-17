@@ -14,16 +14,25 @@
 #include <algorithm>
 #include <ranges>
 //#include <format>
+#include <coroutine>
+#include <filesystem>
+#include "generator.hpp"
 
 using namespace std;
+namespace fs = std::filesystem;
 
 void run_range_demo();
+
+generator<fs::directory_entry> list_directory(fs::path path);
 
 int main(int argc, const char *argv[])
 {
 	try
 	{
 		run_range_demo();
+
+		for (const auto &f : list_directory(fs::path("..")))
+		        std::cout << f.path() << std::endl;
 	}
 	catch (const std::exception &e)
 	{
@@ -45,6 +54,16 @@ void run_range_demo()
 		cout << v << ", ";
 
 	cout << endl;
+}
+
+generator<fs::directory_entry> list_directory(fs::path path)
+{
+    for (auto entry : fs::directory_iterator(path))
+    {
+        co_yield entry;
+        if (is_directory(entry))
+            co_yield list_directory(entry);
+    }
 }
 
 // void run_formating_demo()

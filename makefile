@@ -5,7 +5,7 @@ SRC = src/main.cpp
 TARGET = demo
 
 demo : $(SRC)
-	g++ $(SRC) -o $(TARGET) -std=c++20
+	g++ $(SRC) -o $(TARGET) -std=c++20 -fcoroutines
 
 clean : 
 	rm demo
