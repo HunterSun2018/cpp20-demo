@@ -16,6 +16,7 @@
 //#include <format>
 #include <coroutine>
 #include <filesystem>
+#include <cassert>
 #include "generator.hpp"
 
 using namespace std;
@@ -70,3 +71,69 @@ generator<fs::directory_entry> list_directory(fs::path path)
 // {
 // 	cout << format("Hello {}!\n", "world");
 // }
+
+uint64_t newton_sqrt(uint64_t x, uint64_t y)
+{
+    __uint128_t z = __uint128_t(x) * __uint128_t(y);
+
+    auto z1 = z;
+    auto s = 1; // shift bits
+
+    // Initialize s
+    if (z1 > (__uint128_t(1L) << 64) - 1)
+    {
+        s = s + 32;
+        z1 = z1 >> 64;
+    };
+    if (z1 > (__uint64_t(1L) << 32) - 1)
+    {
+        s = s + 16;
+        z1 = z1 >> 32;
+    };
+    if (z1 > 65535)
+    {
+        s = s + 8;
+        z1 = z1 >> 16;
+    };
+    if (z1 > 255)
+    {
+        s = s + 4;
+        z1 = z1 >> 8;
+    };
+    if (z1 > 15)
+    {
+        s = s + 2;
+        z1 = z1 >> 4;
+    };
+    if (z1 > 3)
+    {
+        s = s + 1;
+    }; //z1 = z1 >> 2;
+
+    // iterate
+    __uint128_t g0 = __uint128_t(1) << s;
+    __uint128_t g1 = (g0 + (z >> s)) >> 1;
+    int i = 0;
+
+    while (g1 < g0)
+    {
+        g0 = g1;
+        g1 = (g0 + z / g0) >> 1;
+
+        i++;
+    };
+
+    cout << "loop " << i << " times" << endl;
+
+    return g0;
+}
+
+void test_newton_sqrt()
+{
+	assert(newton_sqrt(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF) == 0xFFFFFFFFFFFFFFFF);             //0xFFFFFFFFFFFFFFFF
+    assert(newton_sqrt(0xFFFFFFFFFFFFFFFF - 1, 0xFFFFFFFFFFFFFFFF - 1) == 0xFFFFFFFFFFFFFFFF - 1); //0xFFFFFFFFFFFFFFFF
+    assert(newton_sqrt(0xFFFFFFFF, 0xFFFFFFFF) == 0xFFFFFFFF);                                     //0xFFFFFFFF
+    assert(newton_sqrt(245893761, 245893761) == 245893761);                                        //245893761
+    assert(newton_sqrt(3, 3) == 3);
+    assert(newton_sqrt(1, 1) == 1);
+}
