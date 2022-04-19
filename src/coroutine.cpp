@@ -16,9 +16,12 @@ struct Task
 
     struct promise_type
     {
+    private:
         T value;
         std::coroutine_handle<> _prev = nullptr; // previous promise
+        std::exception_ptr _exception = nullptr;
 
+    public:
         Task get_return_object() { return Task{co_handle::from_promise(*this)}; }
 
         std::suspend_never initial_suspend() { return {}; }
@@ -31,21 +34,31 @@ struct Task
             return {};
         }
 
-        void unhandled_exception() { std::rethrow_exception(std::current_exception()); }
+        void unhandled_exception() { _exception = std::current_exception(); }
 
         std::suspend_never return_value(T v)
         {
             value = v;
             return {};
         }
-    };
 
-    T get() const { return _handle.promise().value; }
+        void set_prev_co_handle(std::coroutine_handle<> handle )
+        {
+            _prev = handle;
+        }
+
+        T result()
+        {
+            if (_exception)
+                std::rethrow_exception(_exception);
+            
+            return value;
+        }
+    };
 
     //
     // Chain calling
     //
-
     auto operator co_await()
     {
         struct Awaitor
@@ -53,12 +66,15 @@ struct Task
             Task &task;
 
             bool await_ready() const noexcept { return false; }
-            T await_resume() const noexcept { return task.get(); }
+            T await_resume() const
+            {
+                return task._handle.promise().result();                
+            }
 
             // template <typename PROMISE>
             void await_suspend(std::coroutine_handle<> h)
             {
-                task._handle.promise()._prev = h;
+                task._handle.promise().set_prev_co_handle(h);
             }
         };
 
@@ -76,6 +92,7 @@ struct Task<void>
     struct promise_type
     {
         std::coroutine_handle<> _prev = nullptr; // previous promise
+        std::exception_ptr _exception = nullptr;
 
         Task<void> get_return_object()
         {
@@ -91,7 +108,13 @@ struct Task<void>
             return {};
         }
         void return_void() {}
-        void unhandled_exception() { std::rethrow_exception(std::current_exception()); }
+        void unhandled_exception() { _exception = std::current_exception(); }
+
+        void result()
+        {
+            if (_exception)
+                std::rethrow_exception(_exception);
+        }
     };
 
     //
@@ -105,7 +128,7 @@ struct Task<void>
             Task<void> &task;
 
             bool await_ready() const noexcept { return false; }
-            void await_resume() const noexcept {}
+            void await_resume() const { task._handle.promise().result(); }
 
             // template <typename PROMISE>
             void await_suspend(std::coroutine_handle<> h)
@@ -140,6 +163,8 @@ Task<int> foo3(std::jthread &t)
 {
     auto r = co_await async_running(t);
 
+    throw runtime_error("exception at foo3");
+
     cout << this_thread::get_id() << " async thread id" << endl;
 
     co_return r;
@@ -163,19 +188,33 @@ Task<void> foo1(std::jthread &t)
 
 Task<void> foo(std::jthread &t)
 {
-    co_await foo1(t);
+    try
+    {
+        co_await foo1(t);
 
-    cout << this_thread::get_id() << " async thread id" << endl;
+        cout << this_thread::get_id() << " async thread id" << endl;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 }
 
-int run_coroutine_test(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     using namespace std;
     jthread worker;
 
     cout << this_thread::get_id() << " main thread id" << endl;
 
-    foo(worker);
+    try
+    {
+        foo(worker);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 
     return 0;
 }
